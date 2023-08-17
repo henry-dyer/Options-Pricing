@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.stats import norm
 
+
 class European:
     def __init__(self, spot_price, strike_price, time_to_maturity, risk_free_rate, volatility, call):
         self.S = spot_price
@@ -46,17 +47,20 @@ class European:
 
         for i in range(n - 1, -1, -1):
             for j in range(i + 1):
-                option_value[i][j] = np.exp(-self.r * dt) * (p * option_value[i + 1][j] + q * option_value[i + 1][j + 1])
+                option_value[i][j] = np.exp(-self.r * dt) * (
+                            p * option_value[i + 1][j] + q * option_value[i + 1][j + 1])
 
         return option_value[0][0]
 
-    def trinomial(self, n=252):
+    def trinomial(self, n=3):
         dt = self.T / n
         up_factor = np.exp(self.sigma * np.sqrt(2 * dt))
         down_factor = 1 / up_factor
 
-        p_u = ((np.exp(self.r * dt / 2) - np.exp(-self.sigma * np.sqrt(dt / 2))) / (np.exp(self.sigma * np.sqrt(dt / 2)) - np.exp(-self.sigma * np.sqrt(dt / 2))))**2
-        p_d = ((np.exp(self.sigma * np.sqrt(dt / 2)) - np.exp(self.r * dt / 2)) / (np.exp(self.sigma * np.sqrt(dt / 2)) - np.exp(-self.sigma * np.sqrt(dt / 2))))**2
+        p_u = ((np.exp(self.r * dt / 2) - np.exp(-self.sigma * np.sqrt(dt / 2))) / (
+                    np.exp(self.sigma * np.sqrt(dt / 2)) - np.exp(-self.sigma * np.sqrt(dt / 2)))) ** 2
+        p_d = ((np.exp(self.sigma * np.sqrt(dt / 2)) - np.exp(self.r * dt / 2)) / (
+                    np.exp(self.sigma * np.sqrt(dt / 2)) - np.exp(-self.sigma * np.sqrt(dt / 2)))) ** 2
         p_m = 1 - p_u - p_d
 
         stock_price = [[0 for j in range(2 * i + 1)] for i in range(n + 1)]
@@ -71,6 +75,9 @@ class European:
                 else:
                     stock_price[i][j] = stock_price[i - 1][j - 1]
 
+        for line in stock_price:
+            print(line)
+
         option_value = [[0 for j in range(2 * i + 1)] for i in range(n + 1)]
 
         for j in range(2 * n + 1):
@@ -78,14 +85,20 @@ class European:
 
         for i in range(n - 1, -1, -1):
             for j in range(2 * i + 1):
-                option_value[i][j] = np.exp(-self.r * dt) * (p_u * option_value[i+1][j] + p_m * option_value[i+1][j+1] + p_d * option_value[i+1][j+2])
+                option_value[i][j] = np.exp(-self.r * dt) * (
+                            p_u * option_value[i + 1][j] + p_m * option_value[i + 1][j + 1] + p_d * option_value[i + 1][
+                        j + 2])
+
+        for line in option_value:
+            print(line)
 
         return option_value[0][0]
 
     def monte_carlo(self, sims=100000):
         option_value = np.zeros(sims)
         for i in range(sims):
-            S_T = self.S * np.exp((self.r - 0.5 * self.sigma ** 2) * self.T + self.sigma * np.sqrt(self.T) * np.random.normal())
+            S_T = self.S * np.exp(
+                (self.r - 0.5 * self.sigma ** 2) * self.T + self.sigma * np.sqrt(self.T) * np.random.normal())
             if self.call:
                 payoff = max(S_T - self.K, 0)
             else:
@@ -95,8 +108,12 @@ class European:
         return np.mean(option_value)
 
     def delta(self):
+        d1 = (np.log(self.S / self.K) + (self.r + 0.5 * self.sigma ** 2) * self.T) / (self.sigma * np.sqrt(self.T))
 
-        pass
+        if self.call:
+            return norm.cdf(d1)
+        else:
+            return norm.cdf(d1) - 1
 
     def gamma(self):
         pass
@@ -111,14 +128,18 @@ class European:
         pass
 
 
-# Example usage
-spot = 100
-strike = 100
-time = 1
-rate = 0.05
-vol = 0.2
+def euro_leg():
+    spot_price = float(input("Enter the spot price of the underlying asset: "))
+    strike_price = float(input("Enter the strike price of the option: "))
+    time_to_mat = float(input("Enter the time to maturity (in years): "))
+    vol = float(input("Enter the volatility of the underlying asset's returns: "))
+    rate = float(input("Enter the risk-free interest rate (annualized): "))
+    type = bool(input("Call Option ('True' or 'False'): "))
 
-option = European(spot, strike, time, rate, vol, False)
+    return European(spot_price, strike_price, time_to_mat, vol, rate, type)
+
+
+option = euro_leg()
 
 bs = option.black_scholes()
 mc = option.monte_carlo()
@@ -126,4 +147,3 @@ bi = option.binomial()
 tri = option.trinomial()
 
 print("Black-Scholes Call Price:", bs, mc, bi, tri)
-
