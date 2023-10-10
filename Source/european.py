@@ -11,19 +11,22 @@ class European:
         self.sigma = volatility
         self.call = call
 
-    def black_scholes(self):
-        d1 = (np.log(self.S / self.K) + (self.r + 0.5 * self.sigma ** 2) * self.T) / (self.sigma * np.sqrt(self.T))
-        d2 = d1 - self.sigma * np.sqrt(self.T)
+        self.d1 = (np.log(self.S / self.K) + (self.r + 0.5 * self.sigma ** 2) * self.T) / (self.sigma * np.sqrt(self.T))
+        self.d2 = self.d1 - self.sigma * np.sqrt(self.T)
 
+    def black_scholes(self):
         if self.call:
-            return self.S * norm.cdf(d1) - self.K * np.exp(-self.r * self.T) * norm.cdf(d2)
+            return self.S * norm.cdf(self.d1) - self.K * np.exp(-self.r * self.T) * norm.cdf(self.d2)
         else:
-            return self.S * np.exp(-self.r * self.T) * norm.cdf(-d2) - self.S * norm.cdf(-d1)
+            return self.S * np.exp(-self.r * self.T) * norm.cdf(-self.d2) - self.S * norm.cdf(-self.d1)
 
     def binomial(self, n=252):
+
         dt = self.T / n
         u = np.exp(self.sigma * np.sqrt(dt))
         d = 1 / u
+
+
         p = (np.exp(self.r * dt) - d) / (u - d)
         q = 1 - p
 
@@ -85,9 +88,7 @@ class European:
 
         for i in range(n - 1, -1, -1):
             for j in range(2 * i + 1):
-                option_value[i][j] = np.exp(-self.r * dt) * (
-                            p_u * option_value[i + 1][j] + p_m * option_value[i + 1][j + 1] + p_d * option_value[i + 1][
-                        j + 2])
+                option_value[i][j] = np.exp(-self.r * dt) * (p_u * option_value[i + 1][j] + p_m * option_value[i + 1][j + 1] + p_d * option_value[i + 1][j + 2])
 
         for line in option_value:
             print(line)
@@ -108,24 +109,35 @@ class European:
         return np.mean(option_value)
 
     def delta(self):
-        d1 = (np.log(self.S / self.K) + (self.r + 0.5 * self.sigma ** 2) * self.T) / (self.sigma * np.sqrt(self.T))
-
         if self.call:
-            return norm.cdf(d1)
+            return norm.cdf(self.d1)
         else:
-            return norm.cdf(d1) - 1
+            return norm.cdf(self.d1) - 1
 
     def gamma(self):
-        pass
+
+        return self.S * self.T
 
     def theta(self):
-        pass
+        common = -(self.S * norm.pdf(self.d1) * self.sigma) / (2 * np.sqrt(self.T))
+        if self.call:
+            return common - (self.r * self.K * np.exp(-self.r * self.T) * norm.cdf(self.d2))
+        else:
+            return common + (self.r * self.K * np.exp(-self.r * self.T) * norm.cdf(-self.d2))
+
 
     def rho(self):
-        pass
+        return self.r * self.T
 
     def vega(self):
-        pass
+        return self.sigma
+
+def greeks(euro):
+    print('Delta :', euro.delta())
+    print('Gamma :', euro.gamma())
+    print('Theta :', euro.theta())
+    print('Vega :', euro.vega())
+    print('Rho :', euro.rho())
 
 
 def euro_leg():
@@ -140,6 +152,8 @@ def euro_leg():
 
 
 option = euro_leg()
+
+greeks(option)
 
 bs = option.black_scholes()
 mc = option.monte_carlo()

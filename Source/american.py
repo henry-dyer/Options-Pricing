@@ -2,7 +2,7 @@ import numpy as np
 from scipy.stats import norm
 
 class American:
-    def __init__(self, spot_price, strike_price, time_to_maturity, risk_free_rate, volatility, call):
+    def __init__(self, spot_price, strike_price, time_to_maturity, risk_free_rate, volatility, call=True):
         self.S = spot_price
         self.K = strike_price
         self.T = time_to_maturity
@@ -10,12 +10,34 @@ class American:
         self.sigma = volatility
         self.call = call
 
-    def black_scholes(self):
-        pass
+    def binomial(self, n=252):
+        delta_t = self.T / n
+        discount_factor = np.exp(-self.r * delta_t)
 
-    def binomial(self, num_steps):
-        # Implement the binomial tree pricing method here
-        pass
+        # Calculate up and down factors for the binomial tree
+        u = np.exp(self.r * delta_t)
+        d = 1 / u
+
+        # Initialize the option price tree
+        tree = np.zeros((n + 1, n + 1))
+
+        # Calculate option values at expiration
+        for i in range(n + 1):
+            if self.call:
+                tree[n, i] = max(0, n * (u ** (n - i)) * (d ** i) - self.K)
+            else:
+                tree[n, i] = max(0, self.K - self.S * (u ** (n - i)) * (d ** i))
+
+
+        # Backward induction to calculate option values at earlier nodes
+        for j in range(n - 1, -1, -1):
+            for i in range(j + 1):
+                if self.call:
+                    tree[j, i] = max(0, self.S * (u ** (j - i)) * (d ** i) - self.K, np.exp(-self.r * delta_t) * (0.5 * tree[j + 1, i] + 0.5 * tree[j + 1, i + 1]))
+                else:
+                    tree[j, i] = max(0, self.K - self.S * (u ** (j - i)) * (d ** i), np.exp(-self.r * delta_t) * (0.5 * tree[j + 1, i] + 0.5 * tree[j + 1, i + 1]))
+
+        return tree[0, 0]
 
     def trinomial(self, num_steps):
         # Implement the binomial tree pricing method here
